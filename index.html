@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDG Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #222222;
+    --border-bright: #333333;
+    --text: #e8e8e8;
+    --text-dim: #666666;
+    --text-mid: #999999;
+    --green: #22c55e;
+    --green-bg: #052010;
+    --green-border: #166534;
+    --red: #ef4444;
+    --red-bg: #200505;
+    --red-border: #7f1d1d;
+    --accent: #f5f5f5;
+    --yellow: #eab308;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 720px;
+    padding: 24px 16px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-mid);
+  }
+  .header .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex-direction: column; flex: 1; }
+  .screen.active { display: flex; }
+
+  /* ── SETUP SCREEN ── */
+  .setup-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .setup-sub {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 36px;
+  }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .week-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-mid);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 10px 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.1s;
+    user-select: none;
+  }
+  .week-btn:hover { border-color: var(--border-bright); color: var(--text); }
+  .week-btn.selected { border-color: var(--text); color: var(--accent); background: #1a1a1a; }
+  .week-btn.all-btn { grid-column: 1 / -1; font-size: 11px; letter-spacing: 0.06em; }
+
+  .options-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .opt-btn {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-mid);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 12px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.1s;
+    user-select: none;
+  }
+  .opt-btn:hover { border-color: var(--border-bright); color: var(--text); }
+  .opt-btn.selected { border-color: var(--text); color: var(--accent); background: #1a1a1a; }
+
+  .timer-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 36px;
+  }
+  .timer-row label {
+    font-size: 12px;
+    color: var(--text-mid);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .timer-row input[type=checkbox] {
+    width: 14px; height: 14px;
+    accent-color: var(--text);
+    cursor: pointer;
+  }
+  .timer-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    padding: 8px 10px;
+    width: 100px;
+    outline: none;
+  }
+  .timer-input:focus { border-color: var(--border-bright); }
+  .timer-note { font-size: 11px; color: var(--text-dim); }
+
+  .start-btn {
+    background: var(--text);
+    color: #000;
+    border: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 16px 32px;
+    cursor: pointer;
+    width: 100%;
+    transition: opacity 0.1s;
+  }
+  .start-btn:hover { opacity: 0.88; }
+  .start-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── QUIZ SCREEN ── */
+  .quiz-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .quiz-progress { display: flex; align-items: center; gap: 12px; }
+  .progress-count { font-size: 13px; color: var(--text); }
+  .timer-display {
+    font-size: 15px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text);
+    min-width: 60px;
+    text-align: right;
+  }
+  .timer-display.warn { color: var(--red); }
+
+  .progress-bar-wrap {
+    height: 2px;
+    background: var(--border);
+    margin-bottom: 28px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--text-mid);
+    transition: width 0.3s;
+  }
+
+  .week-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .repeat-badge {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--yellow);
+    border: 1px solid var(--yellow);
+    padding: 1px 8px;
+    margin-bottom: 10px;
+  }
+
+  .question-text {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.6;
+    margin-bottom: 28px;
+    color: var(--text);
+  }
+
+  .options-list { display: flex; flex-direction: column; gap: 8px; }
+  .option {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    padding: 14px 16px;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    transition: border-color 0.1s, background 0.1s;
+    line-height: 1.5;
+  }
+  .option:hover:not(.locked) { border-color: var(--border-bright); }
+  .option .opt-letter {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    min-width: 16px;
+    margin-top: 1px;
+  }
+  .option.correct {
+    border-color: var(--green-border);
+    background: var(--green-bg);
+    color: var(--green);
+  }
+  .option.correct .opt-letter { color: var(--green); }
+  .option.wrong {
+    border-color: var(--red-border);
+    background: var(--red-bg);
+    color: var(--red);
+  }
+  .option.wrong .opt-letter { color: var(--red); }
+  .option.locked { cursor: default; }
+  .option.dimmed { opacity: 0.35; }
+
+  .feedback-row {
+    margin-top: 20px;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .feedback-msg {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .feedback-msg.correct { color: var(--green); }
+  .feedback-msg.wrong { color: var(--red); }
+
+  .next-btn {
+    background: transparent;
+    border: 1px solid var(--border-bright);
+    color: var(--text-mid);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.1s;
+    white-space: nowrap;
+  }
+  .next-btn:hover { border-color: var(--text); color: var(--text); }
+
+  .score-mini {
+    display: flex;
+    gap: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 28px;
+  }
+  .score-mini span.g { color: var(--green); }
+  .score-mini span.r { color: var(--red); }
+
+  /* ── RESULTS SCREEN ── */
+  .results-header {
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .results-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+  }
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 24px;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .stat-val.g { color: var(--green); }
+  .stat-val.r { color: var(--red); }
+  .stat-val.y { color: var(--yellow); }
+  .stat-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .review-section-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 28px 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .review-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .review-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 8px;
+  }
+  .review-item .ri-week {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .review-item .ri-q {
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .review-item .ri-answers {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .review-item .ri-ans {
+    font-size: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 6px 10px;
+  }
+  .review-item .ri-ans.wrong { color: var(--red); background: var(--red-bg); border-left: 2px solid var(--red); }
+  .review-item .ri-ans.correct { color: var(--green); background: var(--green-bg); border-left: 2px solid var(--green); }
+
+  .results-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 32px;
+  }
+  .action-btn {
+    flex: 1;
+    padding: 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid var(--border-bright);
+    background: transparent;
+    color: var(--text-mid);
+    transition: all 0.1s;
+  }
+  .action-btn:hover { border-color: var(--text); color: var(--text); }
+  .action-btn.primary { background: var(--text); color: #000; border-color: var(--text); }
+  .action-btn.primary:hover { opacity: 0.88; }
+
+  .empty-review {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--green);
+    padding: 20px 0;
+    text-align: center;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <h1>SDG Quiz</h1>
+    <span class="tag">NPTEL · 12 WEEKS · 120 Q</span>
+  </div>
+
+  <!-- SETUP -->
+  <div class="screen active" id="screen-setup">
+    <div class="setup-title">Practice Session</div>
+    <div class="setup-sub">Configure your quiz and start practicing.</div>
+
+    <div class="section-label">Select Weeks</div>
+    <div class="week-grid" id="week-grid">
+      <button class="week-btn all-btn selected" data-week="all">All Weeks (120 questions)</button>
+    </div>
+
+    <div class="section-label">Question Order</div>
+    <div class="options-row">
+      <button class="opt-btn selected" id="btn-random" onclick="setOrder('random')">Random</button>
+      <button class="opt-btn" id="btn-ordered" onclick="setOrder('ordered')">In Order</button>
+    </div>
+
+    <div class="section-label">Timer</div>
+    <div class="timer-row">
+      <label>
+        <input type="checkbox" id="timer-enabled" onchange="toggleTimer(this.checked)">
+        Enable timer per question
+      </label>
+      <input type="number" class="timer-input" id="timer-seconds" value="30" min="5" max="300" placeholder="sec" disabled>
+      <span class="timer-note">seconds</span>
+    </div>
+
+    <button class="start-btn" id="start-btn" onclick="startQuiz()">Start Quiz →</button>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="screen" id="screen-quiz">
+    <div class="quiz-topbar">
+      <div class="quiz-progress">
+        <span class="progress-count" id="q-count">1 / 10</span>
+        <span id="repeat-indicator" style="font-size:11px;color:var(--yellow);display:none;">↻ repeat pool: <span id="repeat-count">0</span></span>
+      </div>
+      <div class="timer-display" id="timer-display"></div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="week-badge" id="q-week-badge"></div>
+    <div id="repeat-flag"></div>
+    <div class="question-text" id="q-text"></div>
+    <div class="options-list" id="q-options"></div>
+    <div class="feedback-row">
+      <div class="feedback-msg" id="feedback-msg"></div>
+      <button class="next-btn" id="next-btn" style="display:none;" onclick="nextQuestion()">Next →</button>
+    </div>
+    <div class="score-mini">
+      <span>Correct: <span class="g" id="score-correct">0</span></span>
+      <span>Wrong: <span class="r" id="score-wrong">0</span></span>
+      <span>Queue: <span id="score-queue">0</span></span>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="screen-results">
+    <div class="results-header">
+      <div class="results-title">Session Complete</div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <span class="stat-val" id="res-total">0</span>
+          <span class="stat-label">Questions</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-val g" id="res-correct">0</span>
+          <span class="stat-label">Correct</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-val r" id="res-wrong">0</span>
+          <span class="stat-label">Wrong First</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-val y" id="res-pct">0%</span>
+          <span class="stat-label">Score</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="review-section-title">Questions You Got Wrong</div>
+    <div id="review-list"></div>
+
+    <div class="results-actions">
+      <button class="action-btn" onclick="retryWrong()">Retry Wrong Only</button>
+      <button class="action-btn primary" onclick="goSetup()">New Session</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════════
+const RAW = {
+  1: [
+    { q: "The Global Goals were adopted by all United Nations member states in ___ as a universal call to action to end poverty, protect the planet and ensure that all people enjoy peace and prosperity by ___.", opts: ["2025, 2080","2020, 2060","2012, 2050","2015, 2030"], ans: 3 },
+    { q: "Which of the following is true?", opts: ["The SDGs are a bold commitment to solely increase the GDP of India","Dealing with climate change has no impact on gender equality","Success in one SDG affects success of the others","Only 14 out of the 17 SDGs are interconnected"], ans: 2 },
+    { q: "In June 1992, at the Earth Summit in Rio de Janeiro, Brazil, more than 178 countries adopted ___.", opts: ["Agenda 21","Millennium Development Goals","Agenda 51","Sustainable Development Goals"], ans: 0 },
+    { q: "Brundtland Report was released in 1987 by the WCED. WCED stands for ___.", opts: ["World Commission on Environment Degradation","World Commission on Environment and Development","World Committee on Environmental Depletion","World Commission on Earth Development"], ans: 1 },
+    { q: "Extreme poverty means living on less than ___ a day.", opts: ["$1.25","$4.25","$10.25","$100.25"], ans: 0 },
+    { q: "___________ poverty measures reveal who is poor and how they are poor.", opts: ["Unidimensional","Bidirectional","Multidimensional","Multidirectional"], ans: 2 },
+    { q: "SDG 2 aims to end all forms of ___ by 2030.", opts: ["crime","hunger and malnutrition","pollution","drought"], ans: 1 },
+    { q: "Which of the following is NOT one of the indicators of the Global Hunger Index?", opts: ["Prevalence of wasting and stunting in children under 5 years","Under 5 child mortality rate","Proportion of undernourished in the population","Proportion of obese people in the population"], ans: 3 },
+    { q: "As per Ministry of Housing and Urban Affairs, 135 lpcd has been suggested for urban water supply. For rural areas, 55 lpcd has been fixed under ___.", opts: ["Jal Jeevan Mission","Jal Shakti Mission","Jal Protection Mission","Jal Janta Mission"], ans: 0 },
+    { q: "Forests cover about ___ percent of the Earth's surface.", opts: ["5","85","30","50"], ans: 2 },
+  ],
+  2: [
+    { q: "Which of the following is a characteristic of ESD as described in the framework?", opts: ["It is not locally relevant","It promotes learning only for children","It is interdisciplinary","It uses only two pedagogical techniques"], ans: 2 },
+    { q: "The Declaration on the Right to Development (1986) established that everyone is entitled to participate in and enjoy:", opts: ["Only economic and social development","Economic, political, psychological and communist development","Economic, social, cultural and political development","Only cultural development"], ans: 2 },
+    { q: "Text based methods for assessing ESD programs can be improved by using ___.", opts: ["Interpretive methodologies","Strict curriculum","Only quantitative techniques","Only qualitative methods"], ans: 0 },
+    { q: "SDGs are for the following EXCEPT ___.", opts: ["People","Practice","Planet","Partnership"], ans: 1 },
+    { q: "Policies like employment and labor rights, care and family leaves, and financial regulation are often called the ___ policies.", opts: ["Post-regulation","Self-care","Forceful","Pre-distributive"], ans: 3 },
+    { q: "Which of the following is involved in the development of the HRE indicator framework to measure progress on national implementation of human rights education?", opts: ["Danish Institute of Human Rights","The Office of the High Commissioner for Human Rights","Both A and B","Neither A nor B"], ans: 2 },
+    { q: "___ plays a role in peace education.", opts: ["Schools","Parents","Community","All the given"], ans: 3 },
+    { q: "The enterprise of education at its most profound level is ___.", opts: ["Discriminatory","Selective","Restricted","Transformative"], ans: 3 },
+    { q: "UNESCO's World in 2030 survey revealed that respondents see ___ as one of the top global challenges.", opts: ["Climate change","Hunger","Unemployment","Mental health"], ans: 0 },
+    { q: "Education for sustainable development and peace develops people's skills to take actions that improve our quality of life ___.", opts: ["Only now","Only for the future","For now and for the future","Only for the past"], ans: 2 },
+  ],
+  3: [
+    { q: "Global citizenship is a belief that individuals are members of ___ networks.", opts: ["Multiple","Diverse","Local and non-local","All of the given"], ans: 3 },
+    { q: "A global citizen ___.", opts: ["Is not aware of the wider world","Is confused about their place in the world","Takes an active role in their community","Does not care much about the planet"], ans: 2 },
+    { q: "Global citizenship education is based on ___ domains of learning.", opts: ["Three","Two","Four","Seven"], ans: 0 },
+    { q: "___ is UNESCO's first Category 1 education-related institute in the Asia-Pacific region.", opts: ["MGEIN","MGIER","MGIEP","MGOEL"], ans: 2 },
+    { q: "SDG target 4.7 rearticulates a ___ agenda for education.", opts: ["Regional","Behavioral","Political","Humanistic"], ans: 3 },
+    { q: "SEL stands for ________.", opts: ["Sustainable education and learning","Social and environmental learning","Social and emotional learning","Sustainable and economic learning"], ans: 2 },
+    { q: "Which of the following is a role taken by a teacher in education for sustainable development?", opts: ["Facilitator","Guide","Role model","All of the given"], ans: 3 },
+    { q: "Target ___ calls for strengthening efforts to protect and safeguard the world's cultural and natural heritage.", opts: ["9.5","1.5","2.3","11.4"], ans: 3 },
+    { q: "The UNESCO International Centre for Technical and Vocational Education and Training enables ___ in member states.", opts: ["Green TVET","Blue TVET","Orange TVET","White TVET"], ans: 0 },
+    { q: "Which of the following statements is NOT true?", opts: ["Green jobs contribute to preserving environmental quality","Green jobs ensure workers' rights","Green jobs are only found in the agriculture sector","Green jobs must be accessible to all"], ans: 2 },
+  ],
+  4: [
+    { q: "GESO stands for ___.", opts: ["Green Education for Sustainable Occupation","Green Enhanced Sustainable Occupation","Green Enhanced Skills Occupation","None of the above"], ans: 2 },
+    { q: "The classification of occupations into GIDO, GESO and GNEO is given by US National Center for ___.", opts: ["G*NET","A*NET","I*NET","O*NET"], ans: 3 },
+    { q: "The International Framework for Greening TVET consists of the following tiers, EXCEPT ___.", opts: ["Breaking TVET institutions","Transforming TVET institutions","Formulating National Policies","Forming International Alliance"], ans: 0 },
+    { q: "Energy, water and waste management comes under the ___ dimension of Greening TVET.", opts: ["Green research","Green culture","Green teaching","Green campus"], ans: 3 },
+    { q: "Industry-institute interaction is an indicator of ___.", opts: ["Green house","Green teaching","Green campus","Green curriculum"], ans: 3 },
+    { q: "Sustainable entrepreneurship includes ___.", opts: ["Social entrepreneurship","Eco-preneurship","Intra-preneurship","All of the given"], ans: 3 },
+    { q: "ESD requires ___ learning methods.", opts: ["Participatory","Passive","Rigid","Static"], ans: 0 },
+    { q: "Which of the following is a transversal competency?", opts: ["Creativity","Empathy","Systems thinking","All of the given"], ans: 3 },
+    { q: "___________ is the ability to create good relationships and adapt to different social situations.", opts: ["Emotional fitness","Mental health","Social health","Physical health"], ans: 2 },
+    { q: "Sustainable health is ___.", opts: ["A curative approach","Only about the body","A balance of mind, body and spirit","Only about mental health"], ans: 2 },
+  ],
+  5: [
+    { q: "Siddha comes under the ___.", opts: ["Public health sector","Voluntary health agencies","Indigenous system of medicine","Private health sector"], ans: 2 },
+    { q: "Which of the following is NOT a problem of healthcare infrastructure in India?", opts: ["Shortage of staff","Skewed favor to urban areas","No proper regulatory mechanism","Standard procedures in all regions"], ans: 3 },
+    { q: "Which of the following is a health system building block as suggested by WHO?", opts: ["Economic growth","Access to public transport","Politics","Service delivery"], ans: 3 },
+    { q: "An ecologically sustainable approach broadens the definition of ___.", opts: ["Objective","Outcome","Cost","Value"], ans: 3 },
+    { q: "A ___________ is an environment in which data of medical interest can be stored and made easily available.", opts: ["Health repository","Health bank","Health bag","Health grid"], ans: 3 },
+    { q: "The POSHAN Abhiyan in India aims to improve nutritional outcomes for ___.", opts: ["Children","Lactating mothers","Pregnant women","All of the given"], ans: 3 },
+    { q: "Sus-QI stands for ___.", opts: ["Sustainable quality improvement","Sustainable quality improvisation","Sustainable quantity improvement","Sustainable quantity improvisation"], ans: 0 },
+    { q: "Which of the following is NOT a stage of Sus-QI?", opts: ["Set goals","Measure impacts","Design the improvement effort","Ignore the system"], ans: 3 },
+    { q: "Food insecurity is measured on the ___.", opts: ["FIES","FAIS","FIET","FAIR"], ans: 0 },
+    { q: "The UN lists ___ levels of food security for any given country.", opts: ["5","4","3","2"], ans: 0 },
+  ],
+  6: [
+    { q: "Poor infrastructure can cause hunger in a country.", opts: ["True","False"], ans: 0 },
+    { q: "In high income countries, hunger is mainly caused due to poverty that results from ___.", opts: ["Low GDP of the country","Lack of access to food","Poor public transport infrastructure","Lack of jobs"], ans: 3 },
+    { q: "Which of the following is true about hunger?", opts: ["It is a cause of war","It is an effect of war","It is both a cause and effect of war","It is neither a cause nor an effect of war"], ans: 2 },
+    { q: "___ are most vulnerable to the harmful effects of hidden hunger.", opts: ["Adults","Infants","Adolescents","Elderly"], ans: 1 },
+    { q: "Desertification is typically a result of ___.", opts: ["Drought","Deforestation","Inappropriate agriculture","All of the given"], ans: 3 },
+    { q: "Which of the following is a key initiative in India for the problem of hunger?", opts: ["One Nation, One Plate","One Nation, One Hunger","One Nation, No Ration Card","One Nation, One Ration Card"], ans: 3 },
+    { q: "In the past, MGNREGA has ___.", opts: ["Decreased rural wages","Increased gender wage gaps","Enabled poor access to food","Reduced distress migration from rural areas"], ans: 3 },
+    { q: "Wheat productivity can suffer if ___.", opts: ["Temperature rises","Temperature does not change","Temperature falls","None of the given"], ans: 0 },
+    { q: "Bringing forgotten and neglected foods like yam into cultivation and onto the market is called ___.", opts: ["Diversifying food basket","Restricting food basket","Completing food box","Wasting food basket"], ans: 0 },
+    { q: "Home gardening has been proven as a reliable source to supplement food and nutritional security at the household level.", opts: ["True","False"], ans: 0 },
+  ],
+  7: [
+    { q: "Which of the following is a type of energy?", opts: ["Fossil fuels","Nuclear power","Traditional biomass","All of the given"], ans: 3 },
+    { q: "In IPCC by UN, I stands for ___.", opts: ["Industrial","Internal","International","Intergovernmental"], ans: 3 },
+    { q: "The extraction, transport and refinement of nuclear fuels results in ___.", opts: ["Improvement of land from mining","Pollution of air and water","Replenishment of biodiversity","All of the given"], ans: 1 },
+    { q: "The greatest contributor to air pollution in China is ___.", opts: ["Cooking and heating","Coal burning","Transport","Forest burning"], ans: 1 },
+    { q: "In the wake of tsunami and nuclear disaster following severe earthquake in 2011, a city in Japan set a target for ___ by 2022.", opts: ["Hundred net energy","One net energy","Million net energy","Zero net energy"], ans: 3 },
+    { q: "The term 'energy democracy' grew out of the ___ movement.", opts: ["Hunger justice","Hunger revolt","Climate revolt","Climate justice"], ans: 3 },
+    { q: "The Paris Agreement is a legally binding treaty on ___ adopted by 196 parties at COP 21 in 2015.", opts: ["Climate change","Education","Poverty","None of the given"], ans: 0 },
+    { q: "The Government of India launched the NAPCC in 2008 outlining ___ National Missions on climate change.", opts: ["8","2","100","78"], ans: 0 },
+    { q: "Stubble burning usually takes place in the months of ___.", opts: ["October–November","May–June","January–February","July–August"], ans: 0 },
+    { q: "Stubble burning is ___.", opts: ["Intentional","Natural","Healthy for air quality","Related to burning of paper"], ans: 0 },
+  ],
+  8: [
+    { q: "The Okayama Commitment is from ___.", opts: ["Russia","South Korea","North Korea","Japan"], ans: 3 },
+    { q: "Which of the following is a policy support mechanism of Okayama Commitment?", opts: ["Taking money","Content development","Exploitation of resources","None of the given"], ans: 1 },
+    { q: "Education is related to SDG 9 such that ___.", opts: ["Education helps in skills required to build resilient infrastructure","Education enhances skills to use natural resources more sustainably","Education is critical to lifting people out of poverty","Education helps reduce gender gaps"], ans: 0 },
+    { q: "The frame model structures sustainability competencies into ___ goal dimensions.", opts: ["8","3","11","45"], ans: 1 },
+    { q: "Sustainability issues must be looked at through a ___ approach.", opts: ["Isolated thinking","Independent thinking","Silos thinking","Systems thinking"], ans: 3 },
+    { q: "Technology and Science can alone solve all our sustainability problems.", opts: ["True","False"], ans: 1 },
+    { q: "GAP in the context of ESD stands for ___.", opts: ["Global Action Programme","Great Activity Plan","Global Attention Programme","Great Action Policy"], ans: 0 },
+    { q: "___ competency is the ability to understand and evaluate multiple futures.", opts: ["Anticipatory","Normative","Strategic","Collaborative"], ans: 0 },
+    { q: "The ability to question norms is ___ competency.", opts: ["Critical thinking","Normative","Anticipatory","Self-awareness"], ans: 0 },
+    { q: "Action-oriented learning draws on Kolb's concept of ___.", opts: ["Experiential learning","Experimental learning","Rote learning","Direct learning"], ans: 0 },
+  ],
+  9: [
+    { q: "Activities like fish bowl discussion help ___.", opts: ["Passive thinking","Critical and reflexive thinking","Rote-memory","All of the given"], ans: 1 },
+    { q: "Which of the following is NOT a vision-building exercise?", opts: ["Scenario analysis","Classroom teaching","Science fiction thinking","Dystopian storytelling"], ans: 1 },
+    { q: "The ability to hold contradictory thoughts and feelings is an ___ competency.", opts: ["Intellectual","Interpersonal","Intrapersonal","Institutional"], ans: 2 },
+    { q: "___ intelligences is proposed by Howard Gardner.", opts: ["Multiple","Singular","Double","Triple"], ans: 0 },
+    { q: "___ intelligence refers to using one's body in skilled ways.", opts: ["Kinesthetic","Musical","Naturalist","Spatial"], ans: 0 },
+    { q: "The idea of big transformation implies that changes in individual action are intertwined with ___.", opts: ["Reorganization of self","Reorganization of societal structures","Ignorance of others","None of the given"], ans: 1 },
+    { q: "In ___ learning, learners start to question all the things they knew to make room for new insights and information.", opts: ["Transformative","Transactional","Trivial","Trans-disciplinary"], ans: 0 },
+    { q: "Which of the following is a key principle of adult education?", opts: ["Need to know why","Guilt","Boredom","None of the given"], ans: 0 },
+    { q: "___ Sustainable Development is a process through which people influence and share control over development initiatives, decisions and resources that affect them.", opts: ["Internal","Societal","Participatory","Transformational"], ans: 2 },
+    { q: "___ is the common regulatory body for higher education in India.", opts: ["HECI","WHO","AIIMS","None of the given"], ans: 0 },
+  ],
+  10: [
+    { q: "Sustainable leaders look at immediate, short-term gains.", opts: ["True","False"], ans: 1 },
+    { q: "The need of the hour is to have leaders who ___.", opts: ["Focus only on business profit","Focus only on building technical solutions","Take a holistic approach","None of the given"], ans: 2 },
+    { q: "Which of the following is a part of the 3Ps of triple bottom line?", opts: ["Profit","Passion","Party","Pivot"], ans: 0 },
+    { q: "Organizations need leaders who create value for ___.", opts: ["Internal stakeholders","External stakeholders","Oneself","All stakeholders"], ans: 3 },
+    { q: "The sustainability mindset involves ___.", opts: ["Transparency","Presencing","Integrity","All of the given"], ans: 3 },
+    { q: "Finding ways to maintain one's own and others' energy is an unsustainable leadership practice.", opts: ["True","False"], ans: 1 },
+    { q: "Systems thinking is often highlighted by the ability to ___.", opts: ["Zoom in","Zoom out","Zoom in and out","None of the given"], ans: 2 },
+    { q: "Practicing consciousness awareness includes ___.", opts: ["Ignoring self with others","Forgetting about what has happened and moving on","Living in denial","Authentic interactions"], ans: 3 },
+    { q: "Leadership ___________ is the last challenge of leadership; of letting go, moving on, and planning for one's own obsolescence.", opts: ["Succession","Regression","Formation","Integration"], ans: 0 },
+    { q: "___________ leadership is also called missionary leadership and is different from quiet leadership.", opts: ["Participative","Servant","Radical","Inspirational"], ans: 2 },
+  ],
+  11: [
+    { q: "There is one universal curriculum to become a sustainable leader.", opts: ["True","False"], ans: 1 },
+    { q: "A sustainable leader has a ___ decision-making style.", opts: ["Forceful","Autocratic","Selfish","Consensual"], ans: 3 },
+    { q: "A sustainable leader must have awareness of ___ contexts.", opts: ["Ecological","Economic","Political","All of the given"], ans: 3 },
+    { q: "The 'results' component of sustainable leadership relates with the ___ dimension.", opts: ["Institutional","Social","Environmental","Economic"], ans: 3 },
+    { q: "___ India gives a theory U that consists of aspects like co-initiating, co-sensing and co-evolving among others.", opts: ["HEAD","SAID","GEAD","LEAD"], ans: 3 },
+    { q: "The ___ component in theory 'U' entails prototyping the new.", opts: ["Co-evolving","Co-initiating","Co-sensing","Co-creating"], ans: 3 },
+    { q: "Which of the following factor does NOT aid in becoming a global leader?", opts: ["Willingness to stay in one's comfort zone","Undesirable circumstances like poverty","Confidence to embrace risk","Willingness to learn from failure"], ans: 0 },
+    { q: "According to Maxwell, there are ___ levels of leadership.", opts: ["15","25","50","5"], ans: 3 },
+    { q: "The ___, in relation to their Global Leadership Fellowship program, describes global leaders as dynamic, engaged and driven individuals.", opts: ["World Health Organization","World Labor Organization","World Economic Forum","World Political Forum"], ans: 2 },
+    { q: "SDG ___ is to make cities and human settlements inclusive, safe, resilient, and sustainable.", opts: ["2","10","11","5"], ans: 2 },
+  ],
+  12: [
+    { q: "___ resources are those that exist in the absence of human intervention.", opts: ["Artificial","Natural","Fake","Real"], ans: 1 },
+    { q: "The food sector accounts for around ___ percent of total greenhouse gas emissions.", opts: ["3","22","100","90"], ans: 1 },
+    { q: "Which of the following is NOT a solution for natural resource depletion?", opts: ["Use less renewable energy","Promote sustainable fishing growth","Reduce food waste","Treat wastewater before discharging"], ans: 0 },
+    { q: "In order to support reform on green fiscal policy, UN Environment has established the ___ in partnership with the International Monetary Fund.", opts: ["Green Fiscal Policy Network","Blue Fiscal Policy Network","Green Fishery Policy Network","Green Fiscal Policy Natural"], ans: 0 },
+    { q: "As responsible consumers, we should ask ourselves '___' before buying anything.", opts: ["Do I really need it?","How long will I use it?","Can I borrow it from someone I know?","All of the given"], ans: 3 },
+    { q: "A bulb thrown out after usage forms ___.", opts: ["Wet waste","Valuable waste","Responsible waste","E-waste"], ans: 3 },
+    { q: "SDG ___ seeks to promote international trade, and help developing countries increase their exports to ensure a universal rules-based and equitable trading system.", opts: ["17","2","6","11"], ans: 0 },
+    { q: "According to Gandhiji, wealth should be used for ___.", opts: ["The betterment of humanity","Personal indulgence","Conflicts","Politics"], ans: 0 },
+    { q: "The ___ initiated and spearheaded by Gandhiji is the preeminent prototype of small and cottage industries.", opts: ["Khadi Movement","Salt March","Cotton Movement","Non-violent Protest"], ans: 0 },
+    { q: "___ is the ability of a system to absorb disturbances & retain its basic function and structure.", opts: ["Resilience","Gratitude","Mindfulness","Sustainable consumption"], ans: 0 },
+  ],
+};
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let selectedWeeks = 'all';
+let orderMode = 'random';
+let timerEnabled = false;
+let timerSeconds = 30;
+
+let queue = [];          // main question queue
+let repeatQueue = [];    // wrong answers to repeat
+let currentQ = null;
+let answered = false;
+
+let totalAnswered = 0;
+let correctCount = 0;
+let wrongCount = 0;
+let wrongLog = [];       // { week, q, opts, ans, yourAns } - first-time wrong answers
+
+let timerInterval = null;
+let timeLeft = 0;
+
+// ══════════════════════════════════════════════
+//  SETUP SCREEN
+// ══════════════════════════════════════════════
+(function buildWeekGrid() {
+  const grid = document.getElementById('week-grid');
+  for (let w = 1; w <= 12; w++) {
+    const b = document.createElement('button');
+    b.className = 'week-btn';
+    b.dataset.week = w;
+    b.textContent = `Wk ${w}`;
+    b.onclick = () => toggleWeek(w);
+    grid.appendChild(b);
+  }
+
+  // All button
+  grid.querySelector('[data-week="all"]').onclick = () => {
+    selectedWeeks = 'all';
+    grid.querySelectorAll('.week-btn').forEach(b => b.classList.remove('selected'));
+    grid.querySelector('[data-week="all"]').classList.add('selected');
+  };
+})();
+
+function toggleWeek(w) {
+  const grid = document.getElementById('week-grid');
+  const allBtn = grid.querySelector('[data-week="all"]');
+  const thisBtn = grid.querySelector(`[data-week="${w}"]`);
+
+  if (selectedWeeks === 'all') {
+    selectedWeeks = new Set();
+    allBtn.classList.remove('selected');
+  }
+
+  if (selectedWeeks.has(w)) {
+    selectedWeeks.delete(w);
+    thisBtn.classList.remove('selected');
+    if (selectedWeeks.size === 0) {
+      selectedWeeks = 'all';
+      allBtn.classList.add('selected');
+    }
+  } else {
+    selectedWeeks.add(w);
+    thisBtn.classList.add('selected');
+  }
+}
+
+function setOrder(mode) {
+  orderMode = mode;
+  document.getElementById('btn-random').classList.toggle('selected', mode === 'random');
+  document.getElementById('btn-ordered').classList.toggle('selected', mode === 'ordered');
+}
+
+function toggleTimer(on) {
+  timerEnabled = on;
+  document.getElementById('timer-seconds').disabled = !on;
+}
+
+// ══════════════════════════════════════════════
+//  BUILD QUEUE
+// ══════════════════════════════════════════════
+function buildQueue() {
+  let weeks = selectedWeeks === 'all' ? Object.keys(RAW).map(Number) : [...selectedWeeks];
+  let items = [];
+  weeks.forEach(w => {
+    RAW[w].forEach((q, i) => items.push({ ...q, week: w, idx: i }));
+  });
+  if (orderMode === 'random') {
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+  }
+  return items;
+}
+
+// ══════════════════════════════════════════════
+//  QUIZ LOGIC
+// ══════════════════════════════════════════════
+function startQuiz() {
+  timerSeconds = parseInt(document.getElementById('timer-seconds').value) || 30;
+  queue = buildQueue();
+  repeatQueue = [];
+  totalAnswered = 0;
+  correctCount = 0;
+  wrongCount = 0;
+  wrongLog = [];
+
+  showScreen('quiz');
+  loadNext();
+}
+
+let isRepeat = false;
+let totalOriginal = 0;
+
+function startQuizWith(qs) {
+  queue = [...qs];
+  repeatQueue = [];
+  totalAnswered = 0;
+  correctCount = 0;
+  wrongCount = 0;
+  wrongLog = [];
+  totalOriginal = queue.length;
+  showScreen('quiz');
+  loadNext();
+}
+
+function loadNext() {
+  clearTimer();
+  answered = false;
+  document.getElementById('feedback-msg').textContent = '';
+  document.getElementById('feedback-msg').className = 'feedback-msg';
+  document.getElementById('next-btn').style.display = 'none';
+
+  // Decide: use repeatQueue occasionally (every 3 correct in a row, or randomly)
+  let useRepeat = false;
+  if (repeatQueue.length > 0 && queue.length === 0) useRepeat = true;
+  else if (repeatQueue.length > 0 && Math.random() < 0.3) useRepeat = true;
+
+  if (useRepeat) {
+    const ri = Math.floor(Math.random() * repeatQueue.length);
+    currentQ = { ...repeatQueue[ri], isRepeat: true };
+    repeatQueue.splice(ri, 1);
+    isRepeat = true;
+  } else if (queue.length > 0) {
+    currentQ = { ...queue.shift(), isRepeat: false };
+    isRepeat = false;
+  } else {
+    // done
+    showResults();
+    return;
+  }
+
+  updateTopbar();
+  renderQuestion();
+  if (timerEnabled) startTimer();
+}
+
+function updateTopbar() {
+  const done = totalAnswered;
+  const total = (queue.length + totalAnswered + repeatQueue.length + 1);
+  document.getElementById('q-count').textContent = `${done + 1} / ${total}`;
+
+  const pct = total > 0 ? (done / total) * 100 : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+
+  document.getElementById('score-correct').textContent = correctCount;
+  document.getElementById('score-wrong').textContent = wrongCount;
+  document.getElementById('score-queue').textContent = repeatQueue.length;
+
+  const ri = document.getElementById('repeat-indicator');
+  const rc = document.getElementById('repeat-count');
+  if (repeatQueue.length > 0) {
+    ri.style.display = 'inline';
+    rc.textContent = repeatQueue.length;
+  } else {
+    ri.style.display = 'none';
+  }
+}
+
+function renderQuestion() {
+  document.getElementById('q-week-badge').textContent = `Week ${currentQ.week}`;
+
+  const flag = document.getElementById('repeat-flag');
+  if (currentQ.isRepeat) {
+    flag.innerHTML = '<div class="repeat-badge">↻ REPEAT</div>';
+  } else {
+    flag.innerHTML = '';
+  }
+
+  document.getElementById('q-text').textContent = currentQ.q;
+  const list = document.getElementById('q-options');
+  list.innerHTML = '';
+  const letters = ['A','B','C','D'];
+  currentQ.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.innerHTML = `<span class="opt-letter">${letters[i]}</span><span>${opt}</span>`;
+    btn.onclick = () => selectOption(i, btn);
+    list.appendChild(btn);
+  });
+}
+
+function selectOption(idx, btn) {
+  if (answered) return;
+  answered = true;
+  clearTimer();
+
+  const opts = document.querySelectorAll('.option');
+  opts.forEach(o => o.classList.add('locked'));
+
+  const isCorrect = idx === currentQ.ans;
+  const msg = document.getElementById('feedback-msg');
+
+  if (isCorrect) {
+    btn.classList.add('correct');
+    msg.textContent = '✓ Correct';
+    msg.className = 'feedback-msg correct';
+    correctCount++;
+  } else {
+    btn.classList.add('wrong');
+    opts[currentQ.ans].classList.add('correct');
+    opts.forEach((o, i) => { if (i !== idx && i !== currentQ.ans) o.classList.add('dimmed'); });
+    msg.textContent = '✗ Wrong — correct: ' + String.fromCharCode(65 + currentQ.ans);
+    msg.className = 'feedback-msg wrong';
+    wrongCount++;
+
+    // Add to repeat queue
+    repeatQueue.push({ ...currentQ, isRepeat: true });
+
+    // Log first-time wrongs (not repeats)
+    if (!currentQ.isRepeat) {
+      wrongLog.push({ week: currentQ.week, q: currentQ.q, opts: currentQ.opts, ans: currentQ.ans, yourAns: idx });
+    }
+  }
+
+  totalAnswered++;
+  document.getElementById('next-btn').style.display = 'inline-block';
+  updateTopbar();
+}
+
+function nextQuestion() {
+  loadNext();
+}
+
+// ══════════════════════════════════════════════
+//  TIMER
+// ══════════════════════════════════════════════
+function startTimer() {
+  timeLeft = timerSeconds;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft <= 0) {
+      clearTimer();
+      autoFail();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timer-display');
+  el.textContent = timeLeft + 's';
+  el.classList.toggle('warn', timeLeft <= 5);
+}
+
+function clearTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  document.getElementById('timer-display').textContent = timerEnabled ? '' : '';
+}
+
+function autoFail() {
+  if (answered) return;
+  answered = true;
+  const opts = document.querySelectorAll('.option');
+  opts.forEach(o => o.classList.add('locked'));
+  opts[currentQ.ans].classList.add('correct');
+  const msg = document.getElementById('feedback-msg');
+  msg.textContent = '⏱ Time up — correct: ' + String.fromCharCode(65 + currentQ.ans);
+  msg.className = 'feedback-msg wrong';
+  wrongCount++;
+  totalAnswered++;
+  repeatQueue.push({ ...currentQ, isRepeat: true });
+  if (!currentQ.isRepeat) {
+    wrongLog.push({ week: currentQ.week, q: currentQ.q, opts: currentQ.opts, ans: currentQ.ans, yourAns: -1 });
+  }
+  document.getElementById('next-btn').style.display = 'inline-block';
+  updateTopbar();
+}
+
+// ══════════════════════════════════════════════
+//  RESULTS
+// ══════════════════════════════════════════════
+function showResults() {
+  clearTimer();
+  const total = totalAnswered;
+  const pct = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+  document.getElementById('res-total').textContent = total;
+  document.getElementById('res-correct').textContent = correctCount;
+  document.getElementById('res-wrong').textContent = wrongLog.length;
+  document.getElementById('res-pct').textContent = pct + '%';
+
+  const list = document.getElementById('review-list');
+  list.innerHTML = '';
+  if (wrongLog.length === 0) {
+    list.innerHTML = '<div class="empty-review">✓ Perfect — no wrong answers!</div>';
+  } else {
+    const letters = ['A','B','C','D'];
+    wrongLog.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'review-item';
+      const yourLabel = item.yourAns === -1 ? 'Time up' : `${letters[item.yourAns]}. ${item.opts[item.yourAns]}`;
+      div.innerHTML = `
+        <div class="ri-week">Week ${item.week}</div>
+        <div class="ri-q">${item.q}</div>
+        <div class="ri-answers">
+          <div class="ri-ans wrong">✗ Your answer: ${yourLabel}</div>
+          <div class="ri-ans correct">✓ Correct: ${letters[item.ans]}. ${item.opts[item.ans]}</div>
+        </div>`;
+      list.appendChild(div);
+    });
+  }
+
+  showScreen('results');
+}
+
+function retryWrong() {
+  if (wrongLog.length === 0) { goSetup(); return; }
+  const retryItems = wrongLog.map(w => ({ week: w.week, q: w.q, opts: w.opts, ans: w.ans }));
+  // shuffle
+  for (let i = retryItems.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [retryItems[i], retryItems[j]] = [retryItems[j], retryItems[i]];
+  }
+  queue = retryItems;
+  repeatQueue = [];
+  totalAnswered = 0;
+  correctCount = 0;
+  wrongCount = 0;
+  wrongLog = [];
+  showScreen('quiz');
+  loadNext();
+}
+
+function goSetup() {
+  clearTimer();
+  showScreen('setup');
+}
+
+// ══════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+</script>
+</body>
+</html>
