@@ -24,6 +24,9 @@
     --red-border: #7f1d1d;
     --accent: #f5f5f5;
     --yellow: #eab308;
+    --blue: #3b82f6;
+    --blue-bg: #0f172a;
+    --blue-border: #1e3a8a;
   }
 
   body {
@@ -172,6 +175,17 @@
   .timer-input:focus { border-color: var(--border-bright); }
   .timer-note { font-size: 11px; color: var(--text-dim); }
 
+  .mode-badge {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--blue);
+    border: 1px solid var(--blue);
+    padding: 1px 8px;
+    margin-top: 4px;
+  }
+
   .start-btn {
     background: var(--text);
     color: #000;
@@ -201,6 +215,14 @@
   }
   .quiz-progress { display: flex; align-items: center; gap: 12px; }
   .progress-count { font-size: 13px; color: var(--text); }
+  .quiz-mode-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--blue);
+    border: 1px solid var(--blue);
+    padding: 2px 8px;
+  }
   .timer-display {
     font-size: 15px;
     font-family: 'IBM Plex Mono', monospace;
@@ -286,6 +308,12 @@
   .option.wrong .opt-letter { color: var(--red); }
   .option.locked { cursor: default; }
   .option.dimmed { opacity: 0.35; }
+  .option.learn-mode-highlighted {
+    border-color: var(--green-border);
+    background: var(--green-bg);
+    color: var(--green);
+  }
+  .option.learn-mode-highlighted .opt-letter { color: var(--green); }
 
   .feedback-row {
     margin-top: 20px;
@@ -294,6 +322,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    flex-wrap: wrap;
   }
   .feedback-msg {
     font-family: 'IBM Plex Mono', monospace;
@@ -303,7 +332,13 @@
   .feedback-msg.correct { color: var(--green); }
   .feedback-msg.wrong { color: var(--red); }
 
-  .next-btn {
+  .button-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .next-btn, .show-answer-btn {
     background: transparent;
     border: 1px solid var(--border-bright);
     color: var(--text-mid);
@@ -316,7 +351,16 @@
     transition: all 0.1s;
     white-space: nowrap;
   }
-  .next-btn:hover { border-color: var(--text); color: var(--text); }
+  .next-btn:hover, .show-answer-btn:hover { border-color: var(--text); color: var(--text); }
+  .show-answer-btn {
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+  .show-answer-btn:hover { 
+    border-color: var(--blue);
+    color: var(--blue);
+    opacity: 0.8;
+  }
 
   .score-mini {
     display: flex;
@@ -479,6 +523,12 @@
       <button class="opt-btn" id="btn-ordered" onclick="setOrder('ordered')">In Order</button>
     </div>
 
+    <div class="section-label">Mode</div>
+    <div class="options-row">
+      <button class="opt-btn selected" id="btn-exam" onclick="setMode('exam')">Exam</button>
+      <button class="opt-btn" id="btn-learn" onclick="setMode('learn')">Learn</button>
+    </div>
+
     <div class="section-label">Timer</div>
     <div class="timer-row">
       <label>
@@ -488,6 +538,7 @@
       <input type="number" class="timer-input" id="timer-seconds" value="30" min="5" max="300" placeholder="sec" disabled>
       <span class="timer-note">seconds</span>
     </div>
+    <div id="mode-info" class="mode-badge" style="display:none;">Learn mode: Answers shown immediately</div>
 
     <button class="start-btn" id="start-btn" onclick="startQuiz()">Start Quiz →</button>
   </div>
@@ -498,6 +549,7 @@
       <div class="quiz-progress">
         <span class="progress-count" id="q-count">1 / 10</span>
         <span id="repeat-indicator" style="font-size:11px;color:var(--yellow);display:none;">↻ repeat pool: <span id="repeat-count">0</span></span>
+        <span class="quiz-mode-badge" id="quiz-mode-display"></span>
       </div>
       <div class="timer-display" id="timer-display"></div>
     </div>
@@ -510,7 +562,10 @@
     <div class="options-list" id="q-options"></div>
     <div class="feedback-row">
       <div class="feedback-msg" id="feedback-msg"></div>
-      <button class="next-btn" id="next-btn" style="display:none;" onclick="nextQuestion()">Next →</button>
+      <div class="button-group">
+        <button class="show-answer-btn" id="show-answer-btn" style="display:none;" onclick="showAnswerExamMode()">Show Answer</button>
+        <button class="next-btn" id="next-btn" style="display:none;" onclick="nextQuestion()">Next →</button>
+      </div>
     </div>
     <div class="score-mini">
       <span>Correct: <span class="g" id="score-correct">0</span></span>
@@ -709,18 +764,19 @@ const RAW = {
 // ══════════════════════════════════════════════
 let selectedWeeks = 'all';
 let orderMode = 'random';
+let quizMode = 'exam';
 let timerEnabled = false;
 let timerSeconds = 30;
 
-let queue = [];          // main question queue
-let repeatQueue = [];    // wrong answers to repeat
+let queue = [];
+let repeatQueue = [];
 let currentQ = null;
 let answered = false;
 
 let totalAnswered = 0;
 let correctCount = 0;
 let wrongCount = 0;
-let wrongLog = [];       // { week, q, opts, ans, yourAns } - first-time wrong answers
+let wrongLog = [];
 
 let timerInterval = null;
 let timeLeft = 0;
@@ -739,7 +795,6 @@ let timeLeft = 0;
     grid.appendChild(b);
   }
 
-  // All button
   grid.querySelector('[data-week="all"]').onclick = () => {
     selectedWeeks = 'all';
     grid.querySelectorAll('.week-btn').forEach(b => b.classList.remove('selected'));
@@ -774,6 +829,18 @@ function setOrder(mode) {
   orderMode = mode;
   document.getElementById('btn-random').classList.toggle('selected', mode === 'random');
   document.getElementById('btn-ordered').classList.toggle('selected', mode === 'ordered');
+}
+
+function setMode(mode) {
+  quizMode = mode;
+  document.getElementById('btn-exam').classList.toggle('selected', mode === 'exam');
+  document.getElementById('btn-learn').classList.toggle('selected', mode === 'learn');
+  const modeInfo = document.getElementById('mode-info');
+  if (mode === 'learn') {
+    modeInfo.style.display = 'inline-block';
+  } else {
+    modeInfo.style.display = 'none';
+  }
 }
 
 function toggleTimer(on) {
@@ -812,22 +879,13 @@ function startQuiz() {
   wrongLog = [];
 
   showScreen('quiz');
+  updateModeDisplay();
   loadNext();
 }
 
-let isRepeat = false;
-let totalOriginal = 0;
-
-function startQuizWith(qs) {
-  queue = [...qs];
-  repeatQueue = [];
-  totalAnswered = 0;
-  correctCount = 0;
-  wrongCount = 0;
-  wrongLog = [];
-  totalOriginal = queue.length;
-  showScreen('quiz');
-  loadNext();
+function updateModeDisplay() {
+  const badge = document.getElementById('quiz-mode-display');
+  badge.textContent = quizMode === 'learn' ? 'LEARN' : 'EXAM';
 }
 
 function loadNext() {
@@ -836,8 +894,8 @@ function loadNext() {
   document.getElementById('feedback-msg').textContent = '';
   document.getElementById('feedback-msg').className = 'feedback-msg';
   document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('show-answer-btn').style.display = 'none';
 
-  // Decide: use repeatQueue occasionally (every 3 correct in a row, or randomly)
   let useRepeat = false;
   if (repeatQueue.length > 0 && queue.length === 0) useRepeat = true;
   else if (repeatQueue.length > 0 && Math.random() < 0.3) useRepeat = true;
@@ -846,19 +904,22 @@ function loadNext() {
     const ri = Math.floor(Math.random() * repeatQueue.length);
     currentQ = { ...repeatQueue[ri], isRepeat: true };
     repeatQueue.splice(ri, 1);
-    isRepeat = true;
   } else if (queue.length > 0) {
     currentQ = { ...queue.shift(), isRepeat: false };
-    isRepeat = false;
   } else {
-    // done
     showResults();
     return;
   }
 
   updateTopbar();
   renderQuestion();
-  if (timerEnabled) startTimer();
+  
+  // In learn mode, show answer immediately
+  if (quizMode === 'learn') {
+    showAnswerLearnMode();
+  } else if (timerEnabled) {
+    startTimer();
+  }
 }
 
 function updateTopbar() {
@@ -930,10 +991,8 @@ function selectOption(idx, btn) {
     msg.className = 'feedback-msg wrong';
     wrongCount++;
 
-    // Add to repeat queue
     repeatQueue.push({ ...currentQ, isRepeat: true });
 
-    // Log first-time wrongs (not repeats)
     if (!currentQ.isRepeat) {
       wrongLog.push({ week: currentQ.week, q: currentQ.q, opts: currentQ.opts, ans: currentQ.ans, yourAns: idx });
     }
@@ -942,6 +1001,41 @@ function selectOption(idx, btn) {
   totalAnswered++;
   document.getElementById('next-btn').style.display = 'inline-block';
   updateTopbar();
+}
+
+function showAnswerLearnMode() {
+  answered = true;
+  clearTimer();
+
+  const opts = document.querySelectorAll('.option');
+  opts[currentQ.ans].classList.add('learn-mode-highlighted');
+  opts.forEach(o => o.classList.add('locked'));
+
+  const msg = document.getElementById('feedback-msg');
+  msg.textContent = '✓ Correct answer: ' + String.fromCharCode(65 + currentQ.ans);
+  msg.className = 'feedback-msg correct';
+
+  correctCount++;
+  totalAnswered++;
+  document.getElementById('next-btn').style.display = 'inline-block';
+  updateTopbar();
+}
+
+function showAnswerExamMode() {
+  if (answered) return;
+  answered = true;
+  clearTimer();
+
+  const opts = document.querySelectorAll('.option');
+  opts[currentQ.ans].classList.add('correct');
+  opts.forEach(o => o.classList.add('locked'));
+
+  const msg = document.getElementById('feedback-msg');
+  msg.textContent = '→ Answer: ' + String.fromCharCode(65 + currentQ.ans);
+  msg.className = 'feedback-msg';
+
+  document.getElementById('show-answer-btn').style.display = 'none';
+  document.getElementById('next-btn').style.display = 'inline-block';
 }
 
 function nextQuestion() {
@@ -973,7 +1067,7 @@ function updateTimerDisplay() {
 function clearTimer() {
   clearInterval(timerInterval);
   timerInterval = null;
-  document.getElementById('timer-display').textContent = timerEnabled ? '' : '';
+  document.getElementById('timer-display').textContent = '';
 }
 
 function autoFail() {
@@ -1034,7 +1128,6 @@ function showResults() {
 function retryWrong() {
   if (wrongLog.length === 0) { goSetup(); return; }
   const retryItems = wrongLog.map(w => ({ week: w.week, q: w.q, opts: w.opts, ans: w.ans }));
-  // shuffle
   for (let i = retryItems.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [retryItems[i], retryItems[j]] = [retryItems[j], retryItems[i]];
@@ -1046,6 +1139,7 @@ function retryWrong() {
   wrongCount = 0;
   wrongLog = [];
   showScreen('quiz');
+  updateModeDisplay();
   loadNext();
 }
 
