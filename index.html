@@ -494,6 +494,19 @@
     text-align: center;
   }
 
+  .back-menu-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .back-menu-btn:hover { border-color: var(--border-bright); color: var(--text); }
+
   /* ── SCROLLBAR ── */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
@@ -504,7 +517,7 @@
 <div id="app">
   <div class="header">
     <h1>SDG Quiz</h1>
-    <span class="tag">NPTEL · 12 WEEKS · 120 Q</span>
+    <span class="tag">NPTEL · 13 WEEKS · 130 Q</span>
   </div>
 
   <!-- SETUP -->
@@ -514,7 +527,7 @@
 
     <div class="section-label">Select Weeks</div>
     <div class="week-grid" id="week-grid">
-      <button class="week-btn all-btn selected" data-week="all">All Weeks (120 questions)</button>
+      <button class="week-btn all-btn selected" data-week="all">All Weeks (130 questions)</button>
     </div>
 
     <div class="section-label">Question Order</div>
@@ -547,6 +560,7 @@
   <div class="screen" id="screen-quiz">
     <div class="quiz-topbar">
       <div class="quiz-progress">
+        <button class="back-menu-btn" onclick="goSetup()">← Menu</button>
         <span class="progress-count" id="q-count">1 / 10</span>
         <span id="repeat-indicator" style="font-size:11px;color:var(--yellow);display:none;">↻ repeat pool: <span id="repeat-count">0</span></span>
         <span class="quiz-mode-badge" id="quiz-mode-display"></span>
@@ -563,6 +577,7 @@
     <div class="feedback-row">
       <div class="feedback-msg" id="feedback-msg"></div>
       <div class="button-group">
+        <button class="next-btn" id="prev-btn" style="display:none;" onclick="prevQuestion()">← Prev</button>
         <button class="show-answer-btn" id="show-answer-btn" style="display:none;" onclick="showAnswerExamMode()">Show Answer</button>
         <button class="next-btn" id="next-btn" style="display:none;" onclick="nextQuestion()">Next →</button>
       </div>
@@ -613,6 +628,18 @@
 //  DATA
 // ══════════════════════════════════════════════
 const RAW = {
+  0: [
+    { q: "The full form of SDGs is ___.", opts: ["Sustainable Development Guide","Sensitive Development Guide","Sustainable Driving Goals","Sustainable Development Goals"], ans: 3 },
+    { q: "The SDGs have been adopted by ___ member states.", opts: ["United Kingdom","South African","Asian","United Nations","Parliamentary"], ans: 3 },
+    { q: "SDGs consist of ___ number of goals.", opts: ["30","15","13","17","21"], ans: 3 },
+    { q: "SDGs are at the heart of the ___ agenda for sustainable development.", opts: ["2020","2035","2030","2015","2024"], ans: 2 },
+    { q: "SDGs are also known as ___.", opts: ["Generational goals","Sensible goals","Global goals","Holistic goals","None of the above"], ans: 2 },
+    { q: "All the SDGs are ___.", opts: ["Unrelated","False","Only for one country","Interconnected","None of the above"], ans: 3 },
+    { q: "MDGs stand for ___.", opts: ["Motivational Development Goals","Macro Development Goals","Millennium Development Goals","Micro Development Goals"], ans: 2 },
+    { q: "The Agenda ___ was adopted at the Earth Summit.", opts: ["12","30","35","40","21"], ans: 4 },
+    { q: "There were ___ number of MDGs given, which were later replaced by the SDGs.", opts: ["17","8","18","10"], ans: 1 },
+    { q: "The 'D' in DSDG stands for ___.", opts: ["Department","Division","Distance","Diversity","None of the above"], ans: 1 },
+  ],
   1: [
     { q: "The Global Goals were adopted by all United Nations member states in ___ as a universal call to action to end poverty, protect the planet and ensure that all people enjoy peace and prosperity by ___.", opts: ["2025, 2080","2020, 2060","2012, 2050","2015, 2030"], ans: 3 },
     { q: "Which of the following is true?", opts: ["The SDGs are a bold commitment to solely increase the GDP of India","Dealing with climate change has no impact on gender equality","Success in one SDG affects success of the others","Only 14 out of the 17 SDGs are interconnected"], ans: 2 },
@@ -781,12 +808,16 @@ let wrongLog = [];
 let timerInterval = null;
 let timeLeft = 0;
 
+// history for prev question navigation
+let answeredHistory = [];
+let historyViewIdx = -1; // -1 = live, >=0 = viewing history
+
 // ══════════════════════════════════════════════
 //  SETUP SCREEN
 // ══════════════════════════════════════════════
 (function buildWeekGrid() {
   const grid = document.getElementById('week-grid');
-  for (let w = 1; w <= 12; w++) {
+  for (let w = 0; w <= 12; w++) {
     const b = document.createElement('button');
     b.className = 'week-btn';
     b.dataset.week = w;
@@ -877,6 +908,8 @@ function startQuiz() {
   correctCount = 0;
   wrongCount = 0;
   wrongLog = [];
+  answeredHistory = [];
+  historyViewIdx = -1;
 
   showScreen('quiz');
   updateModeDisplay();
@@ -891,10 +924,13 @@ function updateModeDisplay() {
 function loadNext() {
   clearTimer();
   answered = false;
+  historyViewIdx = -1;
   document.getElementById('feedback-msg').textContent = '';
   document.getElementById('feedback-msg').className = 'feedback-msg';
   document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('next-btn').textContent = 'Next →';
   document.getElementById('show-answer-btn').style.display = 'none';
+  document.getElementById('prev-btn').style.display = answeredHistory.length > 0 ? 'inline-block' : 'none';
 
   let useRepeat = false;
   if (repeatQueue.length > 0 && queue.length === 0) useRepeat = true;
@@ -957,8 +993,7 @@ function renderQuestion() {
   document.getElementById('q-text').textContent = currentQ.q;
   const list = document.getElementById('q-options');
   list.innerHTML = '';
-  const letters = ['A','B','C','D'];
-  currentQ.opts.forEach((opt, i) => {
+  const letters = ['A','B','C','D','E'];
     const btn = document.createElement('button');
     btn.className = 'option';
     btn.innerHTML = `<span class="opt-letter">${letters[i]}</span><span>${opt}</span>`;
@@ -998,8 +1033,10 @@ function selectOption(idx, btn) {
     }
   }
 
+  answeredHistory.push({ q: currentQ, userAns: idx, isCorrect });
   totalAnswered++;
   document.getElementById('next-btn').style.display = 'inline-block';
+  document.getElementById('prev-btn').style.display = 'inline-block';
   updateTopbar();
 }
 
@@ -1015,10 +1052,14 @@ function showAnswerLearnMode() {
   msg.textContent = '✓ Correct answer: ' + String.fromCharCode(65 + currentQ.ans);
   msg.className = 'feedback-msg correct';
 
+  answeredHistory.push({ q: currentQ, userAns: currentQ.ans, isCorrect: true, isLearn: true });
   correctCount++;
   totalAnswered++;
+  // Update score-mini counts but NOT q-count (it was set correctly by loadNext's updateTopbar)
+  document.getElementById('score-correct').textContent = correctCount;
+  document.getElementById('score-queue').textContent = repeatQueue.length;
   document.getElementById('next-btn').style.display = 'inline-block';
-  updateTopbar();
+  document.getElementById('prev-btn').style.display = 'inline-block';
 }
 
 function showAnswerExamMode() {
@@ -1039,7 +1080,76 @@ function showAnswerExamMode() {
 }
 
 function nextQuestion() {
+  if (historyViewIdx >= 0) {
+    // navigating forward in history
+    if (historyViewIdx < answeredHistory.length - 1) {
+      historyViewIdx++;
+      renderHistoryItem(historyViewIdx);
+    } else {
+      // back to live question
+      historyViewIdx = -1;
+      loadNext();
+    }
+    return;
+  }
   loadNext();
+}
+
+function prevQuestion() {
+  if (answeredHistory.length === 0) return;
+  if (historyViewIdx === -1) {
+    historyViewIdx = answeredHistory.length - 1;
+  } else if (historyViewIdx > 0) {
+    historyViewIdx--;
+  } else {
+    return; // already at first
+  }
+  renderHistoryItem(historyViewIdx);
+}
+
+function renderHistoryItem(idx) {
+  const entry = answeredHistory[idx];
+  const q = entry.q;
+  const letters = ['A','B','C','D','E'];
+
+  clearTimer();
+  document.getElementById('q-week-badge').textContent = `Week ${q.week}`;
+  const flag = document.getElementById('repeat-flag');
+  flag.innerHTML = q.isRepeat ? '<div class="repeat-badge">↻ REPEAT</div>' : '';
+  document.getElementById('q-text').textContent = q.q;
+
+  const list = document.getElementById('q-options');
+  list.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option locked';
+    btn.innerHTML = `<span class="opt-letter">${letters[i]}</span><span>${opt}</span>`;
+    if (i === q.ans) btn.classList.add(entry.isLearn ? 'learn-mode-highlighted' : 'correct');
+    else if (i === entry.userAns && !entry.isCorrect) btn.classList.add('wrong');
+    else if (entry.userAns !== -1 && i !== q.ans && i !== entry.userAns) btn.classList.add('dimmed');
+    list.appendChild(btn);
+  });
+
+  const msg = document.getElementById('feedback-msg');
+  if (entry.userAns === -1) {
+    msg.textContent = '⏱ Time up — correct: ' + String.fromCharCode(65 + q.ans);
+    msg.className = 'feedback-msg wrong';
+  } else if (entry.isLearn) {
+    msg.textContent = '✓ Correct answer: ' + String.fromCharCode(65 + q.ans);
+    msg.className = 'feedback-msg correct';
+  } else if (entry.isCorrect) {
+    msg.textContent = '✓ Correct';
+    msg.className = 'feedback-msg correct';
+  } else {
+    msg.textContent = '✗ Wrong — correct: ' + String.fromCharCode(65 + q.ans);
+    msg.className = 'feedback-msg wrong';
+  }
+
+  document.getElementById('show-answer-btn').style.display = 'none';
+  document.getElementById('prev-btn').style.display = idx > 0 ? 'inline-block' : 'none';
+  document.getElementById('next-btn').style.display = 'inline-block';
+  // Update next button label
+  document.getElementById('next-btn').textContent = idx < answeredHistory.length - 1 ? 'Next →' : 'Back to Quiz →';
 }
 
 // ══════════════════════════════════════════════
@@ -1085,7 +1195,9 @@ function autoFail() {
   if (!currentQ.isRepeat) {
     wrongLog.push({ week: currentQ.week, q: currentQ.q, opts: currentQ.opts, ans: currentQ.ans, yourAns: -1 });
   }
+  answeredHistory.push({ q: currentQ, userAns: -1, isCorrect: false });
   document.getElementById('next-btn').style.display = 'inline-block';
+  document.getElementById('prev-btn').style.display = 'inline-block';
   updateTopbar();
 }
 
@@ -1106,8 +1218,7 @@ function showResults() {
   if (wrongLog.length === 0) {
     list.innerHTML = '<div class="empty-review">✓ Perfect — no wrong answers!</div>';
   } else {
-    const letters = ['A','B','C','D'];
-    wrongLog.forEach(item => {
+    const letters = ['A','B','C','D','E'];
       const div = document.createElement('div');
       div.className = 'review-item';
       const yourLabel = item.yourAns === -1 ? 'Time up' : `${letters[item.yourAns]}. ${item.opts[item.yourAns]}`;
@@ -1138,6 +1249,8 @@ function retryWrong() {
   correctCount = 0;
   wrongCount = 0;
   wrongLog = [];
+  answeredHistory = [];
+  historyViewIdx = -1;
   showScreen('quiz');
   updateModeDisplay();
   loadNext();
