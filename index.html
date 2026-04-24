@@ -504,7 +504,7 @@
 <div id="app">
   <div class="header">
     <h1>SDG Quiz</h1>
-    <span class="tag">NPTEL · 12 WEEKS · 120 Q</span>
+    <span class="tag">NPTEL · 13 WEEKS · 130 Q</span>
   </div>
 
   <!-- SETUP -->
@@ -514,7 +514,7 @@
 
     <div class="section-label">Select Weeks</div>
     <div class="week-grid" id="week-grid">
-      <button class="week-btn all-btn selected" data-week="all">All Weeks (120 questions)</button>
+      <button class="week-btn all-btn selected" data-week="all">All Weeks (130 questions)</button>
     </div>
 
     <div class="section-label">Question Order</div>
@@ -551,7 +551,10 @@
         <span id="repeat-indicator" style="font-size:11px;color:var(--yellow);display:none;">↻ repeat pool: <span id="repeat-count">0</span></span>
         <span class="quiz-mode-badge" id="quiz-mode-display"></span>
       </div>
-      <div class="timer-display" id="timer-display"></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="timer-display" id="timer-display"></div>
+        <button class="next-btn" id="menu-btn" onclick="goSetup()" style="font-size:11px;padding:7px 14px;opacity:0.7;">☰ Menu</button>
+      </div>
     </div>
     <div class="progress-bar-wrap">
       <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
@@ -563,6 +566,7 @@
     <div class="feedback-row">
       <div class="feedback-msg" id="feedback-msg"></div>
       <div class="button-group">
+        <button class="next-btn" id="prev-btn" style="display:none;" onclick="prevQuestion()">← Prev</button>
         <button class="show-answer-btn" id="show-answer-btn" style="display:none;" onclick="showAnswerExamMode()">Show Answer</button>
         <button class="next-btn" id="next-btn" style="display:none;" onclick="nextQuestion()">Next →</button>
       </div>
@@ -613,6 +617,18 @@
 //  DATA
 // ══════════════════════════════════════════════
 const RAW = {
+  0: [
+    { q: "The full form of SDGs is ___.", opts: ["Sustainable Development Guide","Sensitive Development Guide","Sustainable Driving Goals","Sustainable Development Goals"], ans: 3 },
+    { q: "The SDGs have been adopted by ___ member states.", opts: ["United Kingdom","South African","Asian","United Nations","Parliamentary"], ans: 3 },
+    { q: "SDGs consist of ___ number of goals.", opts: ["30","15","13","17","21"], ans: 3 },
+    { q: "SDGs are at the heart of the ___ agenda for sustainable development.", opts: ["2020","2035","2030","2015","2024"], ans: 2 },
+    { q: "SDGs are also known as ___.", opts: ["Generational goals","Sensible goals","Global goals","Holistic goals","None of the above"], ans: 2 },
+    { q: "All the SDGs are ___.", opts: ["Unrelated","False","Only for one country","Interconnected","None of the above"], ans: 3 },
+    { q: "MDGs stand for ___.", opts: ["Motivational Development Goals","Macro Development Goals","Millennium Development Goals","Micro Development Goals"], ans: 2 },
+    { q: "The Agenda ___ was adopted at the Earth Summit.", opts: ["12","30","35","40","21"], ans: 4 },
+    { q: "There were ___ number of MDGs given, which were later replaced by the SDGs.", opts: ["17","8","18","10"], ans: 1 },
+    { q: "The 'D' in DSDG stands for ___.", opts: ["Department","Division","Distance","Diversity","None of the above"], ans: 1 },
+  ],
   1: [
     { q: "The Global Goals were adopted by all United Nations member states in ___ as a universal call to action to end poverty, protect the planet and ensure that all people enjoy peace and prosperity by ___.", opts: ["2025, 2080","2020, 2060","2012, 2050","2015, 2030"], ans: 3 },
     { q: "Which of the following is true?", opts: ["The SDGs are a bold commitment to solely increase the GDP of India","Dealing with climate change has no impact on gender equality","Success in one SDG affects success of the others","Only 14 out of the 17 SDGs are interconnected"], ans: 2 },
@@ -772,6 +788,7 @@ let queue = [];
 let repeatQueue = [];
 let currentQ = null;
 let answered = false;
+let questionHistory = [];
 
 let totalAnswered = 0;
 let correctCount = 0;
@@ -786,7 +803,7 @@ let timeLeft = 0;
 // ══════════════════════════════════════════════
 (function buildWeekGrid() {
   const grid = document.getElementById('week-grid');
-  for (let w = 1; w <= 12; w++) {
+  for (let w = 0; w <= 12; w++) {
     const b = document.createElement('button');
     b.className = 'week-btn';
     b.dataset.week = w;
@@ -877,6 +894,7 @@ function startQuiz() {
   correctCount = 0;
   wrongCount = 0;
   wrongLog = [];
+  questionHistory = [];
 
   showScreen('quiz');
   updateModeDisplay();
@@ -911,8 +929,20 @@ function loadNext() {
     return;
   }
 
+  // Save snapshot for Previous button
+  questionHistory.push({
+    q: {...currentQ},
+    queue: [...queue],
+    repeatQueue: [...repeatQueue],
+    totalAnswered,
+    correctCount,
+    wrongCount,
+    wrongLog: [...wrongLog]
+  });
+
   updateTopbar();
   renderQuestion();
+  updatePrevBtn();
   
   // In learn mode, show answer immediately
   if (quizMode === 'learn') {
@@ -957,7 +987,7 @@ function renderQuestion() {
   document.getElementById('q-text').textContent = currentQ.q;
   const list = document.getElementById('q-options');
   list.innerHTML = '';
-  const letters = ['A','B','C','D'];
+  const letters = ['A','B','C','D','E'];
   currentQ.opts.forEach((opt, i) => {
     const btn = document.createElement('button');
     btn.className = 'option';
@@ -1018,7 +1048,6 @@ function showAnswerLearnMode() {
   correctCount++;
   totalAnswered++;
   document.getElementById('next-btn').style.display = 'inline-block';
-  updateTopbar();
 }
 
 function showAnswerExamMode() {
@@ -1040,6 +1069,46 @@ function showAnswerExamMode() {
 
 function nextQuestion() {
   loadNext();
+}
+
+function prevQuestion() {
+  if (questionHistory.length <= 1) return;
+  clearTimer();
+  answered = false;
+
+  // Remove current question's snapshot
+  questionHistory.pop();
+
+  // Restore previous question's snapshot
+  const prev = questionHistory[questionHistory.length - 1];
+  currentQ = {...prev.q};
+  queue = [...prev.queue];
+  repeatQueue = [...prev.repeatQueue];
+  totalAnswered = prev.totalAnswered;
+  correctCount = prev.correctCount;
+  wrongCount = prev.wrongCount;
+  wrongLog = [...prev.wrongLog];
+
+  // Reset UI
+  document.getElementById('feedback-msg').textContent = '';
+  document.getElementById('feedback-msg').className = 'feedback-msg';
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('show-answer-btn').style.display = 'none';
+
+  updateTopbar();
+  renderQuestion();
+  updatePrevBtn();
+
+  if (quizMode === 'learn') {
+    showAnswerLearnMode();
+  } else if (timerEnabled) {
+    startTimer();
+  }
+}
+
+function updatePrevBtn() {
+  const btn = document.getElementById('prev-btn');
+  if (btn) btn.style.display = questionHistory.length > 1 ? 'inline-block' : 'none';
 }
 
 // ══════════════════════════════════════════════
@@ -1106,7 +1175,7 @@ function showResults() {
   if (wrongLog.length === 0) {
     list.innerHTML = '<div class="empty-review">✓ Perfect — no wrong answers!</div>';
   } else {
-    const letters = ['A','B','C','D'];
+    const letters = ['A','B','C','D','E'];
     wrongLog.forEach(item => {
       const div = document.createElement('div');
       div.className = 'review-item';
@@ -1138,6 +1207,7 @@ function retryWrong() {
   correctCount = 0;
   wrongCount = 0;
   wrongLog = [];
+  questionHistory = [];
   showScreen('quiz');
   updateModeDisplay();
   loadNext();
